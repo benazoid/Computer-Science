@@ -2,11 +2,9 @@ package brain;
 
 import actor.BotBrain;
 import actor.GameObject;
-import grid.Grid;
+import actor.Rock;
 import grid.Location;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 // row, col
 public class PathBotV3 extends BotBrain {
@@ -17,62 +15,86 @@ public class PathBotV3 extends BotBrain {
     private ArrayList<Location> route = new ArrayList<>();
     private int[][] grid = new int[24][24];
     private int steps = 0;
-    private boolean tic = false;
+    private String mode = "tic";
     Location[] ticTacToe = {
         new Location(3, 8),
         new Location(6, 6),
         new Location(19, 6),
         new Location(19, 17),
-        new Location(3, 16)
+        new Location(7, 20)
     };
-    int ticNum = 0;
+    int ticNum;
 
     //Resets variables every round
     public void initForRound() {
         ticNum = 0;
+        mode = "tic";
+        grid = new int[24][24];
     }
 
     //Called every step
     public int chooseAction() {
         loc = new Location(getRow(), getCol());
         int dir = 0;
-
-        if (ticNum < ticTacToe.length) {
-            if (steps == 0) {
-                route = pathFind(ticTacToe[ticNum]);
+        
+        if(route.isEmpty()){
+            steps = 0;
+            
+            if(mode.equals("rock")){
+                for(int i = 0 ; i < 4; i++){
+                    Location l = loc.getAdjacentLocation(i * 90);
+                    if(l.isValidLocation() && getArena()[l.getRow()][l.getCol()] instanceof Rock){
+                        return MINE + loc.getDirectionToward(l);
+                    }
+                }
             }
         }
-        else{
-            tic = false;
-            if(steps == 0){
-                route = pathFind(findNearestRock());
+        
+        if(steps == 0){
+            if(mode.equals("tic")){
+                if(ticNum < ticTacToe.length){
+                    route = pathFind(ticTacToe[ticNum]);
+                    ticNum ++;
+                }
+                else{
+                    mode = "rock";
+                    steps = 0;
+                }
+            }
+            if(mode.equals("rock")){
+                Location r = findNearestRock();
+                Location b = new Location(100,100);
+                for(Location l : getNeighs(r)){
+                    if(r.distanceTo(l) < r.distanceTo(b)){
+                        b = l;
+                    }
+                }
+                route = pathFind(b);
             }
         }
 
-        if (route.size() > 0) {
+        if(!route.isEmpty()){
             dir = loc.getDirectionToward(route.get(0));
             route.remove(0);
             steps++;
-        } else {
-            steps = 0;
-            if(!tic)
-                ticNum++;
         }
-
+        
         return dir;
     }
     
     public Location findNearestRock(){
-        GameObject[][] grid = getArena();
-        Location best = grid[0][0].getLocation();
+        GameObject[][] gr = getArena();
+        Location best = null;
         int bestDist = 500;
         
-        for(int i = 0; i < grid.length; i++){
-            for(int j = 0; i < grid[i].length; i++){
-                int d = loc.distanceTo(grid[j][i].getLocation());
-                if(d < bestDist){
-                    bestDist = d;
-                    best = grid[j][i].getLocation();
+        for(int i = 0; i < gr.length; i++){
+            for(int j = 0; j < gr[i].length; j++){
+                if(gr[j][i] instanceof Rock){
+                    int d = loc.distanceTo(gr[j][i].getLocation());
+                    if(d < bestDist){
+                        bestDist = d;
+                        best = gr[j][i].getLocation();
+                    }
                 }
             }
         }
